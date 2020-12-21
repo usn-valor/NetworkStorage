@@ -2,19 +2,17 @@ package client;
 
 import network.SocketThread;
 import network.SocketThreadListener;
-import common.Common;
 
 import javax.swing.*;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
 
 public class Client extends JFrame implements Thread.UncaughtExceptionHandler, SocketThreadListener {
-
-    private boolean shownIoErrors = false;
+    
     private SocketThread socketThread;
     private final DateFormat DATE_FORMAT = new SimpleDateFormat("HH:mm:ss: ");
 
