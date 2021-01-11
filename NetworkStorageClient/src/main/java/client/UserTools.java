@@ -1,5 +1,7 @@
 package client;
 
+import common.FileHandler;
+import common.ManagerByte;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
@@ -17,44 +19,51 @@ import java.util.concurrent.CountDownLatch;
 
 public class UserTools implements ChannelFutureListener {
 
+    private final ClientConnectUtil network;
+
     private boolean isAuthorized = true;
-    private final NetworkUtil network;
-    private BufferedReader br;
     private CountDownLatch networkStarter;
 
+    private ByteBuf buf;
+    private Channel channel;
+    private byte managerByte;
+
     public UserTools() {
-        this.network = new NetworkUtil();
+        this.network = new ClientConnectUtil();
         networkStarter = new CountDownLatch(1);
-        br = new BufferedReader(new InputStreamReader(System.in));
     }
 
-    public void commandListener(String s) {
-        if (isAuthorized) {
-            switch (s) {
-                case "download":
-                    downloadFile(this);
-                    break;
-                case "upload":
-                    uploadFile(this);
-                    break;
-            }
-        }
-        else
-            authorize();
+    public void createNewUser(String newUser, byte b) {
+        managerByte = b;
+        System.out.println("Управляющий байт = " + b);
     }
 
-    private void downloadFile(ChannelFutureListener finishListener) {
-        System.out.println("Enter the name of the downloaded file");
+    public void authorize(String auth, byte b) {
+        managerByte = b;
+        connectToServer();
+        writeManagerByte();
 
+        byte[] user = auth.getBytes(StandardCharsets.UTF_8);
+        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+        buf.writeInt(user.length);
+        channel.writeAndFlush(buf);
+        buf = ByteBufAllocator.DEFAULT.directBuffer(user.length);
+        buf.writeBytes(user);
+        channel.writeAndFlush(buf);
+        System.out.println("Управляющий байт = " + b);
     }
 
-    public void uploadFile(ChannelFutureListener finishListener) {
-        //System.out.println("Enter the name of the uploaded file");
+    public void downloadFile(String downloadedFilename, byte b) {
+        managerByte = b;
+        connectToServer();
+        writeManagerByte();
+    }
+
+    public void uploadFile(String uploadedFilename, byte b) {
+        managerByte = b;
         connectToServer();
         Path path = null;
         path = Paths.get("NetworkStorageClient/src/main/resources/text.txt");
-
-        Channel channel = network.getCurrentChannel();
 
         FileRegion region = null;
         try {
@@ -63,10 +72,7 @@ public class UserTools implements ChannelFutureListener {
             e.printStackTrace();
         }
 
-        ByteBuf buf;
-        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
-        buf.writeByte((byte) 25);
-        channel.writeAndFlush(buf);
+        writeManagerByte();
 
         byte[] filenameBytes = path.getFileName().toString().getBytes(StandardCharsets.UTF_8);
         buf = ByteBufAllocator.DEFAULT.directBuffer(4);
@@ -85,9 +91,13 @@ public class UserTools implements ChannelFutureListener {
         channel.writeAndFlush(buf);
 
         ChannelFuture transferOperationFuture = channel.writeAndFlush(region); // собственно, сама передача файла
-        if (finishListener != null) {
-            transferOperationFuture.addListener(finishListener);
-        }
+        transferOperationFuture.addListener(this);
+    }
+
+    private void writeManagerByte() {
+        buf = ByteBufAllocator.DEFAULT.directBuffer(1);
+        buf.writeByte(managerByte);
+        channel.writeAndFlush(buf);
     }
 
     public void synchronize() {
@@ -117,6 +127,7 @@ public class UserTools implements ChannelFutureListener {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        channel = network.getCurrentChannel();
         return false;
     }
 
