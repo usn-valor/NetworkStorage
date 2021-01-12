@@ -1,5 +1,6 @@
 package client;
 
+import common.common_handlers.InputHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -12,7 +13,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 
-public class NetworkUtil {
+public class ClientConnectUtil {
 
     private static final int PORT_NUMBER = 8189;
     private static final String IP_ADDRESS = "localhost";
@@ -31,8 +32,11 @@ public class NetworkUtil {
                     .channel(NioSocketChannel.class)
                     .remoteAddress(new InetSocketAddress(IP_ADDRESS, PORT_NUMBER))
                     .handler(new ChannelInitializer<SocketChannel>() {
+                        @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
-                            socketChannel.pipeline().addLast();
+                            socketChannel.pipeline()
+                            .addLast(new InputHandler())
+                            .addLast(new ClientHandler());
                             currentChannel = socketChannel;
                         }
                     });

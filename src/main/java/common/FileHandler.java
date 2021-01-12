@@ -1,28 +1,33 @@
-package network;
+package common;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 
-public class ServerHandler extends ChannelInboundHandlerAdapter {
+public class FileHandler {
 
-    private State currentState = State.IDLE;
-    private int nextLength;
-    private long fileLength;
-    private long receivedFileLength;
-    private BufferedOutputStream out;
+    private static final String MANAGER_STRING = "upload";
 
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        System.out.println("Client connected...");
+    private static State currentState = State.IDLE;
+    private static int nextLength;
+    private static long fileLength;
+    private static long receivedFileLength;
+    private static BufferedOutputStream out;
+    private static File file;
+
+    public static void sendFile(Object obj) {
+
+    }
+
+    public static File acceptFile(Object msg) throws Exception {
         ByteBuf buf = ((ByteBuf) msg);
+        System.out.println(buf.getByte(0));
         while (buf.readableBytes() > 0) {
             if (currentState == State.IDLE) {
                 byte readed = buf.readByte();
-                if (readed == (byte) 25) {
+                if (readed == ManagerByte.map.get(MANAGER_STRING)) {
                     currentState = State.NAME_LENGTH;
                     receivedFileLength = 0L;
                     System.out.println("STATE: Start file receiving");
@@ -44,7 +49,8 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
                     byte[] fileName = new byte[nextLength];
                     buf.readBytes(fileName);
                     System.out.println("STATE: Filename received - _" + new String(fileName, "UTF-8"));
-                    out = new BufferedOutputStream(new FileOutputStream("_" + new String(fileName)));
+                    file = new File("_" + new String(fileName));
+                    out = new BufferedOutputStream(new FileOutputStream(file));
                     currentState = State.FILE_LENGTH;
                 }
             }
@@ -73,11 +79,6 @@ public class ServerHandler extends ChannelInboundHandlerAdapter {
         if (buf.readableBytes() == 0) {
             buf.release();
         }
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        cause.printStackTrace();
-        ctx.close();
+        return file;
     }
 }

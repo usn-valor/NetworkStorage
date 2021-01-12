@@ -1,4 +1,4 @@
-package network;
+package common;
 
 public enum State {
     IDLE,
