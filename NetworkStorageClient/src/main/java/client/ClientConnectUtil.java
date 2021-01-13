@@ -1,5 +1,7 @@
 package client;
 
+import client_handlers.ClientAuthorizationHandler;
+import client_handlers.ClientHandler;
 import common.common_handlers.InputHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
@@ -18,7 +20,12 @@ public class ClientConnectUtil {
     private static final int PORT_NUMBER = 8189;
     private static final String IP_ADDRESS = "localhost";
 
+    private ClientEventListener listener;
     private Channel currentChannel;
+
+    public ClientConnectUtil(ClientEventListener listener) {
+        this.listener = listener;
+    }
 
     public Channel getCurrentChannel() {
         return currentChannel;
@@ -35,6 +42,7 @@ public class ClientConnectUtil {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             socketChannel.pipeline()
+                            .addLast(new ClientAuthorizationHandler(listener))
                             .addLast(new InputHandler())
                             .addLast(new ClientHandler());
                             currentChannel = socketChannel;
