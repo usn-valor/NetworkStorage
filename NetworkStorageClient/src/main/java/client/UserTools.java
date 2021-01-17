@@ -1,14 +1,10 @@
 package client;
 
-import common.FileHandler;
-import common.ManagerByte;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.*;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,7 +13,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
-public class UserTools implements ChannelFutureListener {
+public class UserTools implements ChannelFutureListener, ClientEventListener {
+
+    private static final String NON_AUTH = "non&auth";
 
     private final ClientConnectUtil network;
 
@@ -27,10 +25,16 @@ public class UserTools implements ChannelFutureListener {
     private ByteBuf buf;
     private Channel channel;
     private byte managerByte;
+    private String nameOfAuthorizedUser;
 
     public UserTools() {
-        this.network = new ClientConnectUtil();
+        this.network = new ClientConnectUtil(this);
         networkStarter = new CountDownLatch(1);
+        nameOfAuthorizedUser = NON_AUTH;
+    }
+
+    public void setNameOfAuthorizedUser(String nameOfAuthorizedUser) {
+        this.nameOfAuthorizedUser = nameOfAuthorizedUser;
     }
 
     public void createNewUser(String newUser, byte b) {
@@ -42,15 +46,14 @@ public class UserTools implements ChannelFutureListener {
         managerByte = b;
         connectToServer();
         writeManagerByte();
-
-        byte[] user = auth.getBytes(StandardCharsets.UTF_8);
-        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
-        buf.writeInt(user.length);
-        channel.writeAndFlush(buf);
-        buf = ByteBufAllocator.DEFAULT.directBuffer(user.length);
-        buf.writeBytes(user);
-        channel.writeAndFlush(buf);
+        writeSymbols(auth);
         System.out.println("Управляющий байт = " + b);
+    }
+
+    private boolean isAuthorized() {
+        if (!nameOfAuthorizedUser.equals(NON_AUTH))
+            isAuthorized = true;
+        return isAuthorized;
     }
 
     public void downloadFile(String downloadedFilename, byte b) {
@@ -73,14 +76,8 @@ public class UserTools implements ChannelFutureListener {
         }
 
         writeManagerByte();
-
-        byte[] filenameBytes = path.getFileName().toString().getBytes(StandardCharsets.UTF_8);
-        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
-        buf.writeInt(filenameBytes.length);
-        channel.writeAndFlush(buf);
-        buf = ByteBufAllocator.DEFAULT.directBuffer(filenameBytes.length);
-        buf.writeBytes(filenameBytes);
-        channel.writeAndFlush(buf);
+        writeSymbols(nameOfAuthorizedUser);
+        writeSymbols(path.getFileName().toString());
 
         buf = ByteBufAllocator.DEFAULT.directBuffer(8);
         try {
@@ -94,14 +91,28 @@ public class UserTools implements ChannelFutureListener {
         transferOperationFuture.addListener(this);
     }
 
+    public void delete() {
+
+    }
+
+    public void synchronize() {
+
+    }
+
     private void writeManagerByte() {
         buf = ByteBufAllocator.DEFAULT.directBuffer(1);
         buf.writeByte(managerByte);
         channel.writeAndFlush(buf);
     }
 
-    public void synchronize() {
-
+    private void writeSymbols(String sequence) {
+        byte[] bytes = sequence.getBytes(StandardCharsets.UTF_8);
+        buf = ByteBufAllocator.DEFAULT.directBuffer(4);
+        buf.writeInt(bytes.length);
+        channel.writeAndFlush(buf);
+        buf = ByteBufAllocator.DEFAULT.directBuffer(bytes.length);
+        buf.writeBytes(bytes);
+        channel.writeAndFlush(buf);
     }
 
     public List<Path> getFilesAndDirectoriesList() {

@@ -12,6 +12,10 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.util.concurrent.GlobalEventExecutor;
+import server_handlers.AuthorizationHandler;
+import server_handlers.SQLHandler;
+import server_handlers.ServerAnswersHandler;
+import server_handlers.ServerHandler;
 
 public class ServerConnectUtil {
 
@@ -28,7 +32,9 @@ public class ServerConnectUtil {
                         @Override
                         public void initChannel(SocketChannel ch) {
                             ch.pipeline()
-                            .addLast(new SQLHandler(channels))
+                            .addLast(new ServerAnswersHandler())
+                            .addLast(new AuthorizationHandler(channels))
+                            .addLast(new SQLHandler())
                             .addLast(new OutputHandler())
                             .addLast(new InputHandler())
                             .addLast(new ServerHandler());
