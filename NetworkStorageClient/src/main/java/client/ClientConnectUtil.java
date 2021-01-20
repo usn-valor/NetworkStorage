@@ -1,6 +1,6 @@
 package client;
 
-import client_handlers.ClientAuthorizationHandler;
+import client_handlers.ClientCommandHandler;
 import client_handlers.ClientHandler;
 import common.common_handlers.InputHandler;
 import io.netty.bootstrap.Bootstrap;
@@ -42,7 +42,7 @@ public class ClientConnectUtil {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             socketChannel.pipeline()
-                            .addLast(new ClientAuthorizationHandler(listener))
+                            .addLast(new ClientCommandHandler(listener))
                             .addLast(new InputHandler())
                             .addLast(new ClientHandler());
                             currentChannel = socketChannel;

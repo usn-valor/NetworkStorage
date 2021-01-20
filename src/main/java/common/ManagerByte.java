@@ -8,6 +8,7 @@ public class ManagerByte {
     public static Map<String, Byte> map = new HashMap();
 
     static {
+        map.put("hello_byte", (byte) 0);
         map.put("new_user", (byte) 1);
         map.put("authorize", (byte) 2);
         map.put("upload", (byte) 3);

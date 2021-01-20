@@ -34,7 +34,6 @@ public class ServerConnectUtil {
                             ch.pipeline()
                             .addLast(new ServerAnswersHandler())
                             .addLast(new AuthorizationHandler(channels))
-                            .addLast(new SQLHandler())
                             .addLast(new OutputHandler())
                             .addLast(new InputHandler())
                             .addLast(new ServerHandler());

@@ -1,7 +1,8 @@
 package common;
 
 public enum State {
-    IDLE,
+    NICKNAME_LENGTH,
+    NICKNAME,
     NAME_LENGTH,
     NAME,
     FILE_LENGTH,
