@@ -19,7 +19,7 @@ public class UserTools implements ChannelFutureListener, ClientEventListener {
 
     private final ClientConnectUtil network;
 
-    private boolean isAuthorized = true;
+    private boolean isAuthorized;
     private CountDownLatch networkStarter;
 
     private ByteBuf buf;
@@ -31,10 +31,12 @@ public class UserTools implements ChannelFutureListener, ClientEventListener {
         this.network = new ClientConnectUtil(this);
         networkStarter = new CountDownLatch(1);
         nameOfAuthorizedUser = NON_AUTH;
+        connectToServer();
     }
 
     public void setNameOfAuthorizedUser(String nameOfAuthorizedUser) {
         this.nameOfAuthorizedUser = nameOfAuthorizedUser;
+        isAuthorized = true;
     }
 
     public void createNewUser(String newUser, byte b) {
@@ -44,27 +46,29 @@ public class UserTools implements ChannelFutureListener, ClientEventListener {
 
     public void authorize(String auth, byte b) {
         managerByte = b;
-        connectToServer();
-        writeManagerByte();
-        writeSymbols(auth);
-        System.out.println("Управляющий байт = " + b);
+        writeManagerByteAndCommand(auth);
     }
 
-    private boolean isAuthorized() {
-        if (!nameOfAuthorizedUser.equals(NON_AUTH))
-            isAuthorized = true;
-        return isAuthorized;
+    private boolean sendHelloToServer() {
+        if (!isAuthorized) {
+            writeManagerByteAndCommand(NON_AUTH);
+            return true;
+        }
+        return false;
     }
 
     public void downloadFile(String downloadedFilename, byte b) {
         managerByte = b;
-        connectToServer();
-        writeManagerByte();
+        writeManagerByteAndCommand(nameOfAuthorizedUser);
     }
 
     public void uploadFile(String uploadedFilename, byte b) {
         managerByte = b;
-        connectToServer();
+
+        if (sendHelloToServer()) {
+            return;
+        }
+
         Path path = null;
         path = Paths.get("NetworkStorageClient/src/main/resources/text.txt");
 
@@ -75,9 +79,9 @@ public class UserTools implements ChannelFutureListener, ClientEventListener {
             e.printStackTrace();
         }
 
-        writeManagerByte();
-        writeSymbols(nameOfAuthorizedUser);
-        writeSymbols(path.getFileName().toString());
+        System.out.println(nameOfAuthorizedUser);
+        writeManagerByteAndCommand(nameOfAuthorizedUser);
+        writeData(path.getFileName().toString());
 
         buf = ByteBufAllocator.DEFAULT.directBuffer(8);
         try {
@@ -99,17 +103,20 @@ public class UserTools implements ChannelFutureListener, ClientEventListener {
 
     }
 
-    private void writeManagerByte() {
+    private void writeManagerByteAndCommand(String s) {
         buf = ByteBufAllocator.DEFAULT.directBuffer(1);
         buf.writeByte(managerByte);
         channel.writeAndFlush(buf);
+        writeData(s);
     }
 
-    private void writeSymbols(String sequence) {
-        byte[] bytes = sequence.getBytes(StandardCharsets.UTF_8);
+    private void writeData(String data) {
+        byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
+
         buf = ByteBufAllocator.DEFAULT.directBuffer(4);
         buf.writeInt(bytes.length);
         channel.writeAndFlush(buf);
+
         buf = ByteBufAllocator.DEFAULT.directBuffer(bytes.length);
         buf.writeBytes(bytes);
         channel.writeAndFlush(buf);
@@ -121,10 +128,6 @@ public class UserTools implements ChannelFutureListener, ClientEventListener {
 
     public void shareFilesAndDirectoriesList() {
 
-    }
-
-    public void authorize() {
-        System.out.println("Необходимо авторизоваться");
     }
 
     public void createNewUser() {
@@ -146,11 +149,11 @@ public class UserTools implements ChannelFutureListener, ClientEventListener {
     public void operationComplete(ChannelFuture future) throws Exception {
         if (!future.isSuccess()) {
             future.cause().printStackTrace();
-            network.stop();
+            System.out.println("Облом");
         }
+
         if (future.isSuccess()) {
             System.out.println("Файл успешно передан");
-            network.stop();
         }
     }
 }

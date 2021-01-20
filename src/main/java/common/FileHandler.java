@@ -5,34 +5,44 @@ import io.netty.buffer.ByteBuf;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class FileHandler {
 
-    private static final String MANAGER_STRING = "upload";
+    //private static final byte MANAGER_BYTE = 3;
+    private static final String dir = "/Users/Arsen/IdeaProjects/NetworkStorage/NetworkStorageServer/src/main/resources/UserFiles/";
 
-    private static State currentState = State.IDLE;
+    private static State currentState = State.NICKNAME_LENGTH;
     private static int nextLength;
+    private static int nicknameLength;
+    private static String nickname;
     private static long fileLength;
     private static long receivedFileLength;
     private static BufferedOutputStream out;
-    private static File file;
 
-    public static void sendFile(Object obj) {
-
-    }
-
-    public static File acceptFile(Object msg) throws Exception {
+    public static void acceptFile(Object msg) throws Exception {
         ByteBuf buf = ((ByteBuf) msg);
-        System.out.println(buf.getByte(0));
         while (buf.readableBytes() > 0) {
-            if (currentState == State.IDLE) {
-                byte readed = buf.readByte();
-                if (readed == ManagerByte.map.get(MANAGER_STRING)) {
+
+            if (currentState == State.NICKNAME_LENGTH) {
+                if (buf.readableBytes() >= 4) {
+                    buf.readByte();
+                    System.out.println("STATE: Get nickname length");
+                    nicknameLength = buf.readInt();
+                    currentState = State.NICKNAME;
+                    System.out.println(nicknameLength);
+                }
+            }
+
+            if (currentState == State.NICKNAME) {
+                if (buf.readableBytes() >= nicknameLength) {
+                    byte[] nick = new byte[nicknameLength];
+                    buf.readBytes(nick);
+                    nickname = new String(nick, "UTF-8");
+                    System.out.println("STATE: Get nickname");
+                    System.out.println(nickname);
                     currentState = State.NAME_LENGTH;
-                    receivedFileLength = 0L;
-                    System.out.println("STATE: Start file receiving");
-                } else {
-                    System.out.println("ERROR: Invalid first byte - " + readed);
                 }
             }
 
@@ -41,6 +51,7 @@ public class FileHandler {
                     System.out.println("STATE: Get filename length");
                     nextLength = buf.readInt();
                     currentState = State.NAME;
+                    System.out.println(nextLength);
                 }
             }
 
@@ -49,7 +60,10 @@ public class FileHandler {
                     byte[] fileName = new byte[nextLength];
                     buf.readBytes(fileName);
                     System.out.println("STATE: Filename received - _" + new String(fileName, "UTF-8"));
-                    file = new File("_" + new String(fileName));
+                    File userDirectory = new File(dir + nickname);
+                    if (!userDirectory.exists())
+                        Files.createDirectory(Paths.get(dir + nickname));
+                    File file = new File(userDirectory + "/_" + new String(fileName));
                     out = new BufferedOutputStream(new FileOutputStream(file));
                     currentState = State.FILE_LENGTH;
                 }
@@ -68,7 +82,7 @@ public class FileHandler {
                     out.write(buf.readByte());
                     receivedFileLength++;
                     if (fileLength == receivedFileLength) {
-                        currentState = State.IDLE;
+                        currentState = State.NICKNAME_LENGTH;
                         System.out.println("File received");
                         out.close();
                         break;
@@ -79,6 +93,5 @@ public class FileHandler {
         if (buf.readableBytes() == 0) {
             buf.release();
         }
-        return file;
     }
 }
